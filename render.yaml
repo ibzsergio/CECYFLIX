@@ -6,7 +6,7 @@ services:
     region: oregon
     buildCommand: npm install
     startCommand: node index.js
-    rootDir: backend
+    rootDir: recomendaciones-ia/backend
     envVars:
     - key: MONGO_URI
       value: <mongodb+srv://diuver08:<db_password>@cineversecluster.zjcljnm.mongodb.net/?retryWrites=true&w=majority&appName=cineverseCluster>
