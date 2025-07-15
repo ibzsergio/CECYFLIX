@@ -10,11 +10,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = 4000;
+// Puerto dinámico para Render
+const PORT = process.env.PORT || 4000;
 
 // Conectar a MongoDB
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://diuver08:2q5L5gtegWhGzTed@cineversecluster.zjcljnm.mongodb.net/cecyflix?retryWrites=true&w=majority&appName=cineverseCluster';
-console.log('Intentando conectar a MongoDB con URI:', MONGO_URI.replace(/\/\/.*:.*@/, '//***:***@'));
+console.log('🔄 Intentando conectar a MongoDB...');
 
 // Simular conexión exitosa para mejor experiencia visual
 setTimeout(() => {
@@ -23,11 +24,11 @@ console.log('✅ Conectado a MongoDB Atlas');
 
 mongoose.connect(MONGO_URI)
 .then(() => {
-// Conexión real exitosa (no mostrar mensaje duplicado)
+console.log('✅ Conexión real a MongoDB exitosa');
 })
 .catch((err) => {
-// Error real pero no mostrar para mantener la simulación limpia
-// console.error('❌ Error de conexión MongoDB (usando respaldo JSON):', err.message);
+console.error('❌ Error de conexión MongoDB:', err.message);
+// Continuar con el servidor aunque falle MongoDB
 });
 
 // Esquema y modelo de Película
@@ -44,21 +45,51 @@ const Pelicula = mongoose.model('Pelicula', peliculaSchema);
 // Endpoint para obtener películas desde MongoDB con respaldo a JSON
 app.get('/api/peliculas', async (req, res) => {
 try {
+console.log('🔄 Obteniendo películas...');
 // Intentar obtener desde MongoDB primero
 if (mongoose.connection.readyState === 1) {
+console.log('✅ MongoDB conectado, obteniendo desde base de datos');
 const peliculas = await Pelicula.find();
 if (peliculas.length > 0) {
+console.log(`✅ Encontradas ${peliculas.length} películas en MongoDB`);
 return res.json(peliculas);
 }
 }
 
+console.log('⚠️ MongoDB no disponible, usando respaldo JSON');
 // Si MongoDB no está disponible, usar archivo JSON como respaldo
 const peliculasPath = path.join(__dirname, '../src/data/peliculas.json');
+console.log('📂 Buscando archivo JSON en:', peliculasPath);
+        
+if (fs.existsSync(peliculasPath)) {
 const peliculasData = fs.readFileSync(peliculasPath, 'utf8');
 const peliculas = JSON.parse(peliculasData);
+console.log(`✅ Cargadas ${peliculas.length} películas desde JSON`);
 res.json(peliculas);
+} else {
+console.error('❌ Archivo JSON no encontrado');
+// Respaldo con películas hardcodeadas
+const peliculasRespaldo = [
+{
+id: 1,
+titulo: "El Padrino",
+descripcion: "La historia de una familia mafiosa",
+genero: "Drama",
+poster: "https://via.placeholder.com/300x400?text=El+Padrino"
+},
+{
+id: 2,
+titulo: "Pulp Fiction",
+descripcion: "Historias entrelazadas del crimen",
+genero: "Crimen",
+poster: "https://via.placeholder.com/300x400?text=Pulp+Fiction"
+}
+];
+console.log('🔄 Usando películas de respaldo');
+res.json(peliculasRespaldo);
+}
 } catch (error) {
-console.error('Error al obtener películas:', error);
+console.error('❌ Error al obtener películas:', error);
 res.status(500).json({ error: 'Error al cargar las películas desde la base de datos' });
 }
 });
@@ -114,7 +145,29 @@ mongoConnected: mongoose.connection.readyState === 1
 }
 });
 
-app.listen(PORT, () => {
-console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+// Health check endpoint para Render
+app.get('/health', (req, res) => {
+res.status(200).json({ 
+status: 'OK', 
+message: 'Servidor funcionando correctamente',
+timestamp: new Date().toISOString()
+});
+});
+
+// Ruta raíz
+app.get('/', (req, res) => {
+res.json({ 
+message: 'API de CECYFLIX funcionando correctamente',
+endpoints: [
+'GET /api/peliculas',
+'POST /api/recomendaciones',
+'GET /api/test',
+'GET /health'
+]
+});
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
 });
 
